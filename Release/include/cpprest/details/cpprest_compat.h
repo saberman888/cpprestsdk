@@ -25,13 +25,16 @@
 #define CPPREST_CONSTEXPR const
 #endif // _MSC_VER >= 1900
 
-#include <sal.h>
 #elif defined(__MINGW32__) || defined(__MINGW64__) || defined(__MINGW__)
 #if __cplusplus > 201103L
 #define CPPREST_NOEXCEPT noexcept
 #define CPPREST_CONSTEXPR constexpr
 #else
 #error "You need at least a C++11 compliant compiler to complete compilation"
+#endif
+
+#if defined(_UCRT)
+#include <sal.h>
 #endif
 #endif
 #else // ^^^ _WIN32 ^^^ // vvv !_WIN32 vvv
