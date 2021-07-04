@@ -38,8 +38,8 @@ endif()
 # There's a "string table overflow" with mingw-w64 when optimization is disabled.
 #
 # see also: https://stackoverflow.com/questions/14125007/gcc-string-table-overflow-error-during-compilation
-if(MINGW AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-  message(FATAL_ERROR "mingw-w64 cannot build the debug version of this library")
+if(MINGW AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND BUILD_SHARED_LIBS)
+  message(WARNINGS "Due to a limitation of the PE/COFF DLL format, the library will be build with -O2 as a workaround")
 endif()
 
 if(IOS OR ANDROID)
@@ -187,7 +187,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR IOS)
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-strict-aliasing")
 
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "MinGW")
   message("-- Setting gcc options")
 
   set(WARNINGS -Wall -Wextra -Wunused-parameter -Wcast-align -Wcast-qual -Wconversion -Wformat=2 -Winit-self -Winvalid-pch -Wmissing-format-attribute -Wmissing-include-dirs -Wpacked -Wredundant-decls -Wunreachable-code)
@@ -196,6 +196,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-strict-aliasing")
   if (MINGW)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+    if(BUILD_SHARED_LIBS)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+    endif()
   else()
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive -D_GLIBCXX_USE_SCHED_YIELD -D_GLIBCXX_USE_NANOSLEEP")

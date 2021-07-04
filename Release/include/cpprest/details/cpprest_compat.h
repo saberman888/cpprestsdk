@@ -14,8 +14,9 @@
 
 #pragma once
 
-#if defined(_WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32)
 
+#if defined(_MSVC_VER)
 #if _MSC_VER >= 1900
 #define CPPREST_NOEXCEPT noexcept
 #define CPPREST_CONSTEXPR constexpr
@@ -25,7 +26,14 @@
 #endif // _MSC_VER >= 1900
 
 #include <sal.h>
-
+#elif defined(__MINGW32__) || defined(__MINGW64__) || defined(__MINGW__)
+#if __cplusplus > 201103L
+#define CPPREST_NOEXCEPT noexcept
+#define CPPREST_CONSTEXPR constexpr
+#else
+#error "You need at least a C++11 compliant compiler to complete compilation"
+#endif
+#endif
 #else // ^^^ _WIN32 ^^^ // vvv !_WIN32 vvv
 
 #define __declspec(x) __attribute__((x))
@@ -69,7 +77,7 @@
 #endif // __clang__
 #endif // _WIN32
 
-#if defined(_NO_ASYNCRTIMP) || defined(__MINGW32__)
+#if defined(_NO_ASYNCRTIMP)
 #define _ASYNCRTIMP
 #define _ASYNCRTIMP_TYPEINFO
 #else // ^^^ _NO_ASYNCRTIMP ^^^ // vvv !_NO_ASYNCRTIMP vvv
