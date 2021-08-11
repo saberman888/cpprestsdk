@@ -26,7 +26,7 @@
 #endif // _MSC_VER >= 1900
 
 #elif defined(__MINGW32__) || defined(__MINGW64__) || defined(__MINGW__)
-#if __cplusplus > 201103L
+#if __cplusplus >= 201103L
 #define CPPREST_NOEXCEPT noexcept
 #define CPPREST_CONSTEXPR constexpr
 #else
@@ -35,6 +35,18 @@
 
 #if defined(_UCRT)
 #include <sal.h>
+#else
+
+#include <assert.h>
+#define _ASSERTE(x) assert(x)
+#define novtable
+#define __assume(x)                                                                                                    \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x)) __builtin_unreachable();                                                                             \
+    } while (false)
+
+#include "cpprest/details/nosal.h"
 #endif
 #endif
 #else // ^^^ _WIN32 ^^^ // vvv !_WIN32 vvv

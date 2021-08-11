@@ -39,7 +39,7 @@ endif()
 #
 # see also: https://stackoverflow.com/questions/14125007/gcc-string-table-overflow-error-during-compilation
 if(MINGW AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND BUILD_SHARED_LIBS)
-  message(WARNINGS "Due to a limitation of the PE/COFF DLL format, the library will be build with -O2 as a workaround")
+  message(WARNINGS " Due to a limitation of the PE/COFF DLL format, the library will be build with -O2 as a workaround")
 endif()
 
 if(IOS OR ANDROID)
