@@ -32,7 +32,7 @@
 
 namespace utility
 {
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
 #define _UTF16_STRINGS
 #endif
 
