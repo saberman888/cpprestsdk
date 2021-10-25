@@ -421,7 +421,7 @@ bool verify_X509_cert_chain(const std::vector<std::string>& certChain, const std
         return false;
     }
 
-    auto u16HostName = utility::conversions::to_utf16string(hostname);
+    auto u16HostName = std::wstring(hostname.begin(), hostname.end());
     HTTPSPolicyCallbackData policyData = {
         {sizeof(policyData)},
         AUTHTYPE_SERVER,

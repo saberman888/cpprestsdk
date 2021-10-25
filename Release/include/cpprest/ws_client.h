@@ -223,7 +223,7 @@ public:
     /// <param name="whatArg">Error message string.</param>
     websocket_exception(const utility::string_t& whatArg) : m_msg(utility::conversions::to_utf8string(whatArg)) {}
 
-#ifdef _WIN32
+#ifdef _UTF16_STRINGS
     /// <summary>
     /// Creates an <c>websocket_exception</c> with just a string message and no error code.
     /// </summary>
@@ -252,7 +252,7 @@ public:
     {
     }
 
-#ifdef _WIN32
+#ifdef _UTF16_STRINGSs
     /// <summary>
     /// Creates a <c>websocket_exception</c> from a error code and string message.
     /// </summary>

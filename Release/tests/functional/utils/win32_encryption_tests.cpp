@@ -26,7 +26,7 @@ SUITE(win32_encryption)
 {
     TEST(win32_encryption_random_string)
     {
-        utility::string_t rndStr = utility::conversions::to_string_t("random string");
+        auto rndStr = std::wstring(L"random string");
         web::details::win32_encryption enc(rndStr);
 
         VERIFY_ARE_EQUAL(*enc.decrypt(), rndStr);
@@ -34,10 +34,14 @@ SUITE(win32_encryption)
 
     TEST(win32_encryption_empty_string)
     {
-        utility::string_t emptyStr = utility::conversions::to_string_t("");
+        auto emptyStr = std::wstring(L"");
         web::details::win32_encryption enc(emptyStr);
-
+        #ifdef _UTF16_STRINGS
         VERIFY_ARE_EQUAL(*enc.decrypt(), emptyStr);
+        #else 
+        VERIFY_ARE_EQUAL(*enc.decrypt(), emptyStr);
+        #endif
+
     }
 
 } // SUITE(win32_encryption)

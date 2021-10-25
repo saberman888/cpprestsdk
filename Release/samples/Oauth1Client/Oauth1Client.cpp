@@ -61,8 +61,12 @@ static const utility::string_t s_twitter_secret;
 static void open_browser(utility::string_t auth_uri)
 {
 #if defined(_WIN32) && !defined(__cplusplus_winrt)
+    #ifdef _UTF16_STRINGS
     // NOTE: Windows desktop only.
     auto r = ShellExecuteA(NULL, "open", conversions::utf16_to_utf8(auth_uri).c_str(), NULL, NULL, SW_SHOWNORMAL);
+    #else
+    auto r = ShellExecuteA(NULL, "open", auth_uri.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    #endif
 #elif defined(__APPLE__)
     // NOTE: OS X only.
     string_t browser_cmd(U("open \"") + auth_uri + U("\""));

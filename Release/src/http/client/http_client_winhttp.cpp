@@ -629,6 +629,7 @@ public:
             return;
         }
 
+        #ifdef _UTF16_STRINGS
         HTTPSPolicyCallbackData policyData = {
             {sizeof(policyData)},
             AUTHTYPE_SERVER,
@@ -639,6 +640,19 @@ public:
                 | 0x00002000 /* SECURITY_FLAG_IGNORE_CERT_DATE_INVALID */,
             &m_customCnCheck[0],
         };
+        #else
+        auto wcustomCnCheck = std::wstring(m_customCnCheck.begin(), m_customCnCheck.end());
+        HTTPSPolicyCallbackData policyData = {
+            {sizeof(policyData)},
+            AUTHTYPE_SERVER,
+            // we assume WinHTTP already checked these:
+            0x00000080       /* SECURITY_FLAG_IGNORE_REVOCATION */
+                | 0x00000100 /* SECURITY_FLAG_IGNORE_UNKNOWN_CA */
+                | 0x00000200 /* SECURITY_FLAG_IGNORE_WRONG_USAGE */
+                | 0x00002000 /* SECURITY_FLAG_IGNORE_CERT_DATE_INVALID */,
+            &wcustomCnCheck[0],
+        };
+        #endif
         CERT_CHAIN_POLICY_PARA policyPara = {sizeof(policyPara)};
         policyPara.pvExtraPolicyPara = &policyData;
 
@@ -847,7 +861,12 @@ protected:
                         else if (proxyIE.lpszAutoConfigUrl)
                         {
                             m_proxy_auto_config = true;
+                            #ifdef _UTF16_STRINGS
                             m_proxy_auto_config_url = proxyIE.lpszAutoConfigUrl;
+                            #else
+                            m_proxy_auto_config_url =
+                                utility::conversions::to_utf8string(proxyIE.lpszAutoConfigUrl);
+                            #endif
                         }
                         else if (proxyIE.lpszProxy)
                         {
@@ -873,7 +892,11 @@ protected:
             uri = config.proxy().address();
             if (uri.is_port_default())
             {
-                proxy_name = uri.host().c_str();
+#ifdef _UTF16_STRINGS
+                proxy_name = proxy_str.c_str();
+#else
+                proxy_name = utility::conversions::to_wstring(proxy_str).c_str();
+#endif
             }
             else
             {
@@ -883,8 +906,11 @@ protected:
                     proxy_str.push_back(_XPLATSTR(':'));
                     proxy_str.append(::utility::conversions::details::to_string_t(uri.port()));
                 }
-
+                #ifdef _UTF16_STRINGS
                 proxy_name = proxy_str.c_str();
+                #else
+                proxy_name = utility::conversions::to_wstring(proxy_str).c_str();
+                #endif
             }
         }
 
@@ -947,7 +973,12 @@ protected:
         unsigned int port = m_uri.is_port_default()
                                 ? (m_secure ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT)
                                 : m_uri.port();
+        #ifdef _UTF16_STRINGS
         m_hConnection = WinHttpConnect(m_hSession, m_uri.host().c_str(), (INTERNET_PORT)port, 0);
+        #else
+        m_hConnection = WinHttpConnect(m_hSession, utility::conversions::to_wstring(m_uri.host()).c_str(), (INTERNET_PORT)port, 0);
+        #endif
+
 
         if (m_hConnection == nullptr)
         {
@@ -1003,12 +1034,19 @@ protected:
             else
             {
                 autoproxy_options.dwFlags = WINHTTP_AUTOPROXY_CONFIG_URL;
+                #ifdef _UTF16_STRINGS
                 autoproxy_options.lpszAutoConfigUrl = m_proxy_auto_config_url.c_str();
+                #else 
+                autoproxy_options.lpszAutoConfigUrl = utility::conversions::to_wstring(m_proxy_auto_config_url).c_str();
+                #endif
             }
 
             autoproxy_options.fAutoLogonIfChallenged = TRUE;
-
+            #ifdef _UTF16_STRINGS
             auto result = WinHttpGetProxyForUrl(m_hSession, m_uri.to_string().c_str(), &autoproxy_options, &info);
+            #else
+            auto result = WinHttpGetProxyForUrl(m_hSession, utility::conversions::to_wstring(m_uri.to_string()).c_str(), &autoproxy_options, &info);
+            #endif
             if (result)
             {
                 proxy_info_required = true;
@@ -1026,7 +1064,7 @@ protected:
 
         // Open the request.
         winhttp_context->m_request_handle_context = new std::weak_ptr<winhttp_request_context>(winhttp_context);
-
+        #ifdef _UTF16_STRINGS
         winhttp_context->m_request_handle =
             WinHttpOpenRequest(m_hConnection,
                                msg.method().c_str(),
@@ -1035,6 +1073,16 @@ protected:
                                WINHTTP_NO_REFERER,
                                WINHTTP_DEFAULT_ACCEPT_TYPES,
                                WINHTTP_FLAG_ESCAPE_DISABLE | (m_secure ? WINHTTP_FLAG_SECURE : 0));
+        #else 
+         winhttp_context->m_request_handle =
+            WinHttpOpenRequest(m_hConnection,
+                               utility::conversions::to_wstring(msg.method()).c_str(),
+                               utility::conversions::to_wstring(encoded_resource).c_str(),
+                               nullptr,
+                               WINHTTP_NO_REFERER,
+                               WINHTTP_DEFAULT_ACCEPT_TYPES,
+                               WINHTTP_FLAG_ESCAPE_DISABLE | (m_secure ? WINHTTP_FLAG_SECURE : 0));
+         #endif
         if (winhttp_context->m_request_handle == nullptr)
         {
             auto errorCode = GetLastError();
@@ -1235,6 +1283,7 @@ protected:
         // Add headers.
         if (!flattened_headers.empty())
         {
+            #ifdef _UTF16_STRINGS
             if (!WinHttpAddRequestHeaders(winhttp_context->m_request_handle,
                                           flattened_headers.c_str(),
                                           static_cast<DWORD>(flattened_headers.length()),
@@ -1244,6 +1293,17 @@ protected:
                 request->report_error(errorCode, build_error_msg(errorCode, "WinHttpAddRequestHeaders"));
                 return;
             }
+            #else
+            if (!WinHttpAddRequestHeaders(winhttp_context->m_request_handle,
+                                          utility::conversions::to_wstring(flattened_headers).c_str(),
+                                          static_cast<DWORD>(flattened_headers.length()),
+                                          WINHTTP_ADDREQ_FLAG_ADD))
+            {
+                auto errorCode = GetLastError();
+                request->report_error(errorCode, build_error_msg(errorCode, "WinHttpAddRequestHeaders"));
+                return;
+            }
+            #endif
         }
 
         // Register for notification on cancellation to abort this request.
@@ -1890,6 +1950,7 @@ private:
             // New scope to ensure plaintext password is cleared as soon as possible.
             {
                 auto password = cred._internal_decrypt();
+                #ifdef _UTF16_STRINGS
                 if (!WinHttpSetCredentials(hRequestHandle,
                                            dwAuthTarget,
                                            dwSelectedScheme,
@@ -1899,6 +1960,17 @@ private:
                 {
                     return false;
                 }
+                #else 
+                if (!WinHttpSetCredentials(hRequestHandle,
+                                           dwAuthTarget,
+                                           dwSelectedScheme,
+                                           utility::conversions::to_wstring(cred.username()).c_str(),
+                                           utility::conversions::to_wstring(password->c_str()).c_str(),
+                                           nullptr))
+                {
+                    return false;
+                }
+                #endif
             }
         }
 

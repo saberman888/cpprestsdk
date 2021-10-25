@@ -318,5 +318,24 @@ private:
     // Headers are stored in a map with case insensitive key.
     inner_container m_headers;
 };
+
+template<>
+void http_headers::add(const key_type& name, const std::wstring& value)
+{
+    #ifdef _UTF16_STRINGS
+    auto printedValue = utility::conversions::details::print_string(value);
+    #else
+    auto printedValue = utility::conversions::details::print_string(utility::conversions::to_utf8string(value));
+    #endif
+    auto& mapVal = m_headers[name];
+    if (mapVal.empty())
+    {
+        mapVal = std::move(printedValue);
+    }
+    else
+    {
+        mapVal.append(_XPLATSTR(", ")).append(std::move(printedValue));
+    }
+}
 } // namespace http
 } // namespace web

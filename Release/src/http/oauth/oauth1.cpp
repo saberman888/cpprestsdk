@@ -61,9 +61,13 @@ std::vector<unsigned char> oauth1_config::_hmac_sha1(const utility::string_t& ke
     std::vector<unsigned char> hash;
     DWORD hash_len = 0;
     ULONG result_len = 0;
-
+    #ifdef _UTF16_STRINGS
     const auto& key_c = conversions::utf16_to_utf8(key);
     const auto& data_c = conversions::utf16_to_utf8(data);
+    #else 
+    const auto& key_c = key;
+    const auto& data_c = data;
+    #endif
 
     status = BCryptOpenAlgorithmProvider(&alg_handle, BCRYPT_SHA1_ALGORITHM, nullptr, BCRYPT_ALG_HANDLE_HMAC_FLAG);
     if (!NT_SUCCESS(status))

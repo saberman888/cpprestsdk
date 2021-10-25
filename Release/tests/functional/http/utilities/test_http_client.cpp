@@ -73,7 +73,11 @@ static void parse_status_code(HINTERNET request_handle, unsigned short& code)
                         &buffer[0],
                         &length,
                         WINHTTP_NO_HEADER_INDEX);
+    #ifdef _UTF16_STRING
     code = (unsigned short)_wtoi(buffer.c_str());
+    #else 
+    code = (unsigned short)std::stoi(buffer.c_str());
+    #endif
 }
 
 // Helper function to trim leading and trailing null characters from a string.
@@ -108,14 +112,14 @@ static void parse_reason_phrase(HINTERNET request_handle, utility::string_t& phr
 /// <summary>
 /// Parses a string containing Http headers.
 /// </summary>
-static void parse_winhttp_headers(HINTERNET request_handle, utf16char* headersStr, test_response* p_response)
+static void parse_winhttp_headers(HINTERNET request_handle, unsigned char* headersStr, test_response* p_response)
 {
     // Status code and reason phrase.
     parse_status_code(request_handle, p_response->m_status_code);
     parse_reason_phrase(request_handle, p_response->m_reason_phrase);
 
-    utf16char* context = nullptr;
-    utf16char* line = wcstok_s(headersStr, U("\r\n"), &context);
+    char* context = nullptr;
+    char* line = strtok_s(reinterpret_cast<char*>(headersStr), U("\r\n"), &(context));
     while (line != nullptr)
     {
         const utility::string_t header_line(line);
@@ -128,7 +132,7 @@ static void parse_winhttp_headers(HINTERNET request_handle, utf16char* headersSt
             tests::functional::http::utilities::trim_whitespace(value);
             p_response->m_headers[key] = value;
         }
-        line = wcstok_s(nullptr, U("\r\n"), &context);
+        line = strtok_s(nullptr, U("\r\n"), &context);
     }
 }
 
@@ -140,7 +144,7 @@ public:
     unsigned long open()
     {
         // Open session.
-        m_hSession = WinHttpOpen(U("test_http_client"),
+        m_hSession = WinHttpOpen(L"test_http_client",
                                  WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                  WINHTTP_NO_PROXY_NAME,
                                  WINHTTP_NO_PROXY_BYPASS,
@@ -176,7 +180,13 @@ public:
         // Open connection.
         ::http::uri u(m_uri);
         unsigned int port = u.is_port_default() ? INTERNET_DEFAULT_PORT : u.port();
-        m_hConnection = WinHttpConnect(m_hSession, u.host().c_str(), (INTERNET_PORT)port, 0);
+        #ifdef _UTF16_STRINGS
+        auto whost = u.host;
+        #else
+        auto host = u.host();
+        auto whost = std::wstring(host.begin(), host.end());
+        #endif
+        m_hConnection = WinHttpConnect(m_hSession, whost.c_str(), (INTERNET_PORT)port, 0);
         if (m_hConnection == nullptr)
         {
             return GetLastError();
@@ -220,8 +230,16 @@ public:
                           void* data,
                           size_t data_length)
     {
+        #ifdef _UTF16_STRINGS
+        auto wmethod = method;
+        auto wpath = path;
+        #else 
+        auto wmethod = std::wstring(method.begin(), method.end());
+        auto wpath = std::wstring(path.begin(), path.end());
+        #endif
         HINTERNET request_handle = WinHttpOpenRequest(
-            m_hConnection, method.c_str(), path.c_str(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+            m_hConnection, wmethod.c_str(), wpath.c_str(), NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+
         if (request_handle == nullptr)
         {
             return GetLastError();
@@ -230,7 +248,13 @@ public:
         // Add headers.
         if (!headers.empty())
         {
-            utility::string_t flattened_headers = flatten_http_headers(headers);
+            auto _flattened_headers = flatten_http_headers(headers);
+            #if !defined(_UTF16_STRINGS)
+            auto flattened_headers = std::wstring(_flattened_headers.begin(), _flattened_headers.end());
+            #else
+            auto flattened_headers = _flattened_headers;
+            #endif
+            
             if (!WinHttpAddRequestHeaders(request_handle,
                                           flattened_headers.c_str(),
                                           (DWORD)flattened_headers.length(),
@@ -322,7 +346,7 @@ private:
                 // Now allocate buffer for headers and query for them.
                 std::vector<unsigned char> header_raw_buffer;
                 header_raw_buffer.resize(headers_length);
-                utf16char* header_buffer = reinterpret_cast<utf16char*>(&header_raw_buffer[0]);
+                unsigned char* header_buffer = &header_raw_buffer[0];
                 if (!WinHttpQueryHeaders(hRequestHandle,
                                          WINHTTP_QUERY_RAW_HEADERS_CRLF,
                                          WINHTTP_HEADER_NAME_BY_INDEX,

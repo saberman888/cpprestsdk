@@ -125,8 +125,14 @@ win32_encryption::~win32_encryption() { SecureZeroMemory(m_buffer.data(), m_buff
 plaintext_string win32_encryption::decrypt() const
 {
     // Copy the buffer and decrypt to avoid having to re-encrypt.
+    #ifdef _UTF16_STRING
     auto result = plaintext_string(new std::wstring(reinterpret_cast<const std::wstring::value_type*>(m_buffer.data()),
                                                     m_buffer.size() / sizeof(wchar_t)));
+    #else
+    auto result = plaintext_string(new std::string(reinterpret_cast<const std::string::value_type*>(m_buffer.data()),
+                                                    m_buffer.size() / sizeof(char)));
+    #endif 
+
     auto& data = *result;
     if (!m_buffer.empty())
     {

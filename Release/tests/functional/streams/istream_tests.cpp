@@ -69,7 +69,7 @@ void fill_file_with_lines(const utility::string_t& name, const std::string& end,
         stream << "abcdefghijklmnopqrstuvwxyz" << end;
 }
 
-#ifdef _WIN32
+#ifdef _UTF16_STRINGS
 
 // Disabling warning in test because we check for nullptr.
 #pragma warning(push)
@@ -820,7 +820,7 @@ SUITE(istream_tests)
         VERIFY_ARE_EQUAL(str1, "abc");
         VERIFY_ARE_EQUAL(str2, "defgsf");
     }
-#ifdef _WIN32 // On Linux, this becomes the exact copy of istream_extract_string1, hence disabled
+#ifdef _UTF16_STRINGS // On Linux, this becomes the exact copy of istream_extract_string1, hence disabled
     TEST(istream_extract_wstring_1)
     {
         producer_consumer_buffer<char> rbuf;

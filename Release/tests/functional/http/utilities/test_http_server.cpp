@@ -217,7 +217,7 @@ public:
         }
 
         // Create request queue.
-        error_code = HttpCreateRequestQueue(httpApiVersion, U("test_http_server"), NULL, NULL, &m_request_queue);
+        error_code = HttpCreateRequestQueue(httpApiVersion, L"test_http_server", NULL, NULL, &m_request_queue);
         if (error_code)
         {
             throw std::runtime_error("error code: " + std::to_string(error_code));
@@ -232,7 +232,8 @@ public:
         }
 
         // Add Url.
-        error_code = HttpAddUrlToUrlGroup(m_url_group, host_uri.c_str(), (HTTP_URL_CONTEXT)this, 0);
+        std::wstring whost_uri = std::wstring(host_uri.begin(), host_uri.end());
+        error_code = HttpAddUrlToUrlGroup(m_url_group, whost_uri.c_str(), (HTTP_URL_CONTEXT)this, 0);
         if (error_code)
         {
             throw std::runtime_error("error code: " + std::to_string(error_code));
@@ -290,7 +291,11 @@ public:
 
         // Now create request structure.
         auto p_test_request = std::unique_ptr<test_request>(new test_request(p_http_request->RequestId, this));
+        #ifdef _UTF16_STRING
         p_test_request->m_path = utf8_to_utf16(p_http_request->pRawUrl);
+        #else 
+        p_test_request->m_path = p_http_request->pRawUrl;
+        #endif
         p_test_request->m_method = parse_verb(p_http_request);
         p_test_request->m_headers = parse_http_headers(p_http_request->Headers);
 
@@ -361,7 +366,8 @@ public:
         }
 
         // Remove Url.
-        ULONG error_code = HttpRemoveUrlFromUrlGroup(m_url_group, host_uri.c_str(), 0);
+        auto whost_uri = std::wstring(host_uri.begin(), host_uri.end());
+        ULONG error_code = HttpRemoveUrlFromUrlGroup(m_url_group, whost_uri.c_str(), 0);
         if (error_code)
         {
             return error_code;
@@ -420,8 +426,13 @@ public:
             int headerIndex = 1;
             for (auto iter = headers.begin(); iter != headers.end(); ++iter, ++headerIndex)
             {
+                #ifdef _UTF16_STRINGS
                 headers_buffer[headerIndex * 2] = utf16_to_utf8(iter->first);
                 headers_buffer[headerIndex * 2 + 1] = utf16_to_utf8(iter->second);
+                #else
+                headers_buffer[headerIndex * 2] = iter->first;
+                headers_buffer[headerIndex * 2 + 1] = iter->second;
+                #endif
 
                 // TFS 624150
 #pragma warning(push)

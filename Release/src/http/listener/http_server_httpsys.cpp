@@ -100,6 +100,7 @@ http::method parse_request_method(const HTTP_REQUEST* p_request)
 {
     http::method method;
 
+
     switch (p_request->Verb)
     {
         case HttpVerbGET: method = methods::GET; break;
@@ -110,7 +111,11 @@ http::method parse_request_method(const HTTP_REQUEST* p_request)
         case HttpVerbOPTIONS: method = methods::OPTIONS; break;
         case HttpVerbTRACE: method = methods::TRCE; break;
         case HttpVerbCONNECT: method = methods::CONNECT; break;
+#ifdef _UTF16_STRINGS
         case HttpVerbUnknown: char_to_wstring(method, p_request->pUnknownVerb); break;
+#else
+        case HttpVerbUnknown: method = p_request->pUnknownVerb; break;
+#endif
         case HttpVerbMOVE: method = _XPLATSTR("MOVE"); break;
         case HttpVerbCOPY: method = _XPLATSTR("COPY"); break;
         case HttpVerbPROPFIND: method = _XPLATSTR("PROPFIND"); break;
@@ -135,8 +140,12 @@ void parse_http_headers(const HTTP_REQUEST_HEADERS& headers, http::http_headers&
     //      http_header class itself.
     for (USHORT i = 0; i < headers.UnknownHeaderCount; ++i)
     {
+        #ifdef _UTF16_STRINGS
         utf16string unknown_header_name;
         char_to_wstring(unknown_header_name, headers.pUnknownHeaders[i].pName);
+        #else 
+        std::string unknown_header_name = headers.pUnknownHeaders[i].pName;
+        #endif
 
         // header value can be empty
         if (headers.pUnknownHeaders[i].RawValueLength > 0)
@@ -200,9 +209,15 @@ pplx::task<void> http_windows_server::register_listener(
         host_uri.push_back(U('/'));
     }
 
+    #ifdef _UTF16_STRINGS
+    auto whost_uri = host_uri;
+    #else
+    auto whost_uri = std::wstring(host_uri.begin(), host_uri.end());
+    #endif
+
     // inside here we check for a few specific error types that know about
     // there may be more possibilities for windows to return a different error
-    errorCode = HttpAddUrlToUrlGroup(urlGroupId, host_uri.c_str(), (HTTP_URL_CONTEXT)pListener, 0);
+    errorCode = HttpAddUrlToUrlGroup(urlGroupId, whost_uri.c_str(), (HTTP_URL_CONTEXT)pListener, 0);
     if (errorCode)
     {
         HttpCloseUrlGroup(urlGroupId);
@@ -489,7 +504,11 @@ void windows_request_context::read_headers_io_completion(DWORD error_code, DWORD
             // HTTP_REQUEST::pRawUrl contains the raw URI that came across the wire.
             // Use this instead since the CookedUrl is a mess of the URI components
             // some encoded and some not.
+            #ifdef _UTF16_STRINGS
             m_msg.set_request_uri(utf8_to_utf16(m_request->pRawUrl));
+            #else 
+            m_msg.set_request_uri(m_request->pRawUrl);
+            #endif
         }
         catch (const uri_exception& e)
         {
@@ -570,6 +589,7 @@ void windows_request_context::read_headers_io_completion(DWORD error_code, DWORD
             {(uint8_t)m_request->Version.MajorVersion, (uint8_t)m_request->Version.MinorVersion});
 
         // Retrieve the remote IP address
+        #ifdef _UTF16_STRINGS
         std::vector<wchar_t> remoteAddressBuffer(50);
 
         if (m_request->Address.pRemoteAddress->sa_family == AF_INET6)
@@ -584,9 +604,26 @@ void windows_request_context::read_headers_io_completion(DWORD error_code, DWORD
         }
         else
         {
-            remoteAddressBuffer[0] = L'\0';
+            remoteAddressBuffer[0] = U('\0');
         }
+        #else
+        std::vector<char> remoteAddressBuffer(50);
 
+        if (m_request->Address.pRemoteAddress->sa_family == AF_INET6)
+        {
+            auto inAddr = &reinterpret_cast<SOCKADDR_IN6*>(m_request->Address.pRemoteAddress)->sin6_addr;
+            inet_ntop(AF_INET6, inAddr, &remoteAddressBuffer[0], remoteAddressBuffer.size());
+        }
+        else if (m_request->Address.pRemoteAddress->sa_family == AF_INET)
+        {
+            auto inAddr = &reinterpret_cast<SOCKADDR_IN*>(m_request->Address.pRemoteAddress)->sin_addr;
+            inet_ntop(AF_INET, inAddr, &remoteAddressBuffer[0], remoteAddressBuffer.size());
+        }
+        else
+        {
+            remoteAddressBuffer[0] = U('\0');
+        }
+        #endif
         m_msg._get_impl()->_set_remote_address(&remoteAddressBuffer[0]);
 
         // Start reading in body from the network.
@@ -865,7 +902,11 @@ void windows_request_context::async_process_response()
     HTTP_RESPONSE win_api_response;
     ZeroMemory(&win_api_response, sizeof(win_api_response));
     win_api_response.StatusCode = m_response.status_code();
+    #ifdef _UTF16_STRING
     const std::string reason = utf16_to_utf8(m_response.reason_phrase());
+    #else
+    const std::string reason = m_response.reason_phrase();
+    #endif
     win_api_response.pReason = reason.c_str();
     win_api_response.ReasonLength = (USHORT)reason.size();
     size_t content_length;
@@ -926,8 +967,14 @@ void windows_request_context::async_process_response()
     int headerIndex = 0;
     for (auto iter = m_response.headers().begin(); iter != m_response.headers().end(); ++iter, ++headerIndex)
     {
+        #ifdef _UTF16_STRING
         m_headers_buffer[headerIndex * 2] = utf16_to_utf8(iter->first);
         m_headers_buffer[headerIndex * 2 + 1] = utf16_to_utf8(iter->second);
+        #else
+        m_headers_buffer[headerIndex * 2] = iter->first;
+        m_headers_buffer[headerIndex * 2 + 1] = iter->second;
+        #endif 
+
         win_api_response.Headers.pUnknownHeaders[headerIndex].NameLength =
             (USHORT)m_headers_buffer[headerIndex * 2].size();
         win_api_response.Headers.pUnknownHeaders[headerIndex].pName = m_headers_buffer[headerIndex * 2].c_str();

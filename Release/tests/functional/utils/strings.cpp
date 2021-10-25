@@ -40,7 +40,7 @@ SUITE(strings)
         }
     }
 
-#ifdef _WIN32
+#ifdef _UTF16_STRINGS
 #define UTF16(x) L##x
 #else
 #define UTF16(x) u##x

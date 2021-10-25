@@ -898,11 +898,13 @@ SUITE(file_buffer_tests)
         file_buf.putc('a').wait();
         file_buf.close().wait();
 
+        #ifdef _UTF16_STRINGS
         // Try to read from file with a 2 byte character.
         concurrency::streams::basic_istream<wchar_t> inFile(OPEN<wchar_t>(U("one_byte_file.txt"), std::ios::in).get());
         concurrency::streams::container_buffer<std::wstring> buffer;
         VERIFY_ARE_EQUAL(inFile.read(buffer, 1).get(), 0);
         VERIFY_IS_TRUE(inFile.is_eof());
+        #endif
     }
 #endif
 
@@ -914,7 +916,11 @@ SUITE(file_buffer_tests)
         // Create a file with one byte.
         string_t filename = U("read_one_byte_at_4G.txt");
         // create a sparse file with sparse file apis
-        auto handle = CreateSparseFile(filename.c_str());
+        #if !defined(_UTF16_STRINGS)
+        auto wfilename = std::wstring(filename.begin(), filename.end());
+        #endif
+
+        auto handle = CreateSparseFile(wfilename.c_str());
         VERIFY_ARE_NOT_EQUAL(handle, INVALID_HANDLE_VALUE);
 
         // write 1 byte

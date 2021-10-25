@@ -152,9 +152,21 @@ SUITE(negative_parsing_tests)
 #ifdef _WIN32
     TEST(wstream_left_over_chars)
     {
+        #ifdef _UTF16_STRINGS
         std::wstringbuf buf;
-        buf.sputn(L"[false]false", 12);
+        std::wistream stream;
+        #else
+        std::stringbuf buf;
+        #endif
+
+        buf.sputn(U("[false]false"), 12);
+
+        #ifdef _UTF16_STRINGS
         std::wistream stream(&buf);
+        #else
+        std::istream stream(&buf);
+        #endif
+
         verify_json_throws(stream);
     }
 #endif

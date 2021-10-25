@@ -27,7 +27,8 @@ SUITE(encoding_tests)
 #pragma warning(disable : 4428)
     TEST(encode_string)
     {
-        utility::string_t result = uri::encode_uri(L"first%second\u4e2d\u56fd");
+        utility::string_t result = uri::encode_uri(U("first%second\u4e2d\u56fd"));
+
         VERIFY_ARE_EQUAL(U("first%25second%E4%B8%AD%E5%9B%BD"), result);
 
         result = uri::encode_uri(U("first%second"));
@@ -37,7 +38,7 @@ SUITE(encoding_tests)
     TEST(decode_string)
     {
         utility::string_t result = uri::decode(U("first%25second%E4%B8%AD%E5%9B%BD"));
-        VERIFY_ARE_EQUAL(L"first%second\u4e2d\u56fd", result);
+        VERIFY_ARE_EQUAL(U("first%second\u4e2d\u56fd"), result);
 
         result = uri::decode(U("first%25second"));
         VERIFY_ARE_EQUAL(U("first%second"), result);
