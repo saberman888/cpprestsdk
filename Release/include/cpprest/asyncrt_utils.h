@@ -281,7 +281,7 @@ utility::string_t print_string(const Source& val)
     }
     return oss.str();
 }
-
+#ifdef _WIN32
 template<>
 utility::string_t print_string(const utility::string_t& val)
 {
@@ -315,7 +315,7 @@ utility::string_t print_string(const std::u16string& val)
     }
     return oss.str();
 }
-
+#endif
 inline const utility::string_t& print_string(const utility::string_t& val) { return val; }
 
 template<typename Source>

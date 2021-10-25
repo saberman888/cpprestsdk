@@ -31,7 +31,11 @@ class winrt_encryption
 {
 public:
     winrt_encryption() = default;
+    #ifdef _UTF16_STRINGS
     _ASYNCRTIMP winrt_encryption(const std::wstring& data);
+    #else
+    _ASYNCRTIMP winrt_encryption(const std::string& data);
+    #endif
     _ASYNCRTIMP plaintext_string decrypt() const;
 
 private:
@@ -72,7 +76,7 @@ public:
     /// </summary>
     /// <param name="username">User name as a string.</param>
     /// <param name="password">Password as a string.</param>
-    credentials(utility::string_t username, const utility::string_t& password) : m_username(std::move(username)) /* ,m_password(password)*/
+    credentials(utility::string_t username, const utility::string_t& password) : m_username(std::move(username)) ,m_password(password)
     {
     }
 
