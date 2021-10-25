@@ -259,7 +259,7 @@ std::string windows_category_impl::message(int errorCode) const CPPREST_NOEXCEPT
     // strip exceeding characters of the initial resize call
     buffer.resize(result);
 
-    return utility::conversions::to_utf8string(buffer);
+    return utility::conversions::to_utf8string(std::u16string(buffer.begin(), buffer.end()));
 }
 
 std::error_condition windows_category_impl::default_error_condition(int errorCode) const CPPREST_NOEXCEPT
@@ -617,6 +617,30 @@ utility::string_t __cdecl conversions::to_string_t(const std::string& s) { retur
 std::string __cdecl conversions::to_utf8string(const utf16string& value) { return utf16_to_utf8(value); }
 
 utf16string __cdecl conversions::to_utf16string(const std::string& value) { return utf8_to_utf16(value); }
+
+#ifdef _WIN32
+std::string __cdecl conversions::to_utf8string(const std::wstring& value) {
+    // HACK
+    const char16_t* conv = reinterpret_cast<const char16_t*>(value.c_str());
+    return utf16_to_utf8(conv);
+}
+
+std::wstring __cdecl to_wstring(std::string&& value)
+{
+    auto conv = utf8_to_utf16(std::move(value));
+    return std::wstring(conv.begin(), conv.end());
+}
+
+std::wstring __cdecl to_wstring(const std::string& value)
+{
+    auto conv = utf8_to_utf16(value);
+    return std::wstring(conv.begin(), conv.end());
+}
+
+std::wstring __cdecl to_wstring(const std::u16string& value) { return std::wstring(value.begin(), value.end()); }
+
+
+#endif
 
 static const int64_t NtToUnixOffsetSeconds = 11644473600; // diff between windows and unix epochs (seconds)
 

@@ -178,6 +178,36 @@ inline const std::string& to_utf8string(const std::string& value) { return value
 /// <returns>A single byte character UTF-8 string.</returns>
 _ASYNCRTIMP std::string __cdecl to_utf8string(const utf16string& value);
 
+#ifdef _WIN32
+
+/// <summary>
+/// Converts
+/// </summary>
+/// <param name="value">A two byte std::wstring</param>
+/// <returns>A UTF-8 std::string</param>
+_ASYNCRTIMP std::string __cdecl to_utf8string(const std::wstring& value);
+
+/// <summary>
+/// Converts 
+/// </summary>
+/// <param name="value">A single byte character UTF8 string</param>
+/// <returns>A wide representation of provided string</param>
+_ASYNCRTIMP std::wstring __cdecl to_wstring(std::string&& value);
+
+/// <summary>
+/// Converts
+/// </summary>
+/// <param name="value">A single byte character UTF8 string</param>
+/// <returns>A wide representation of provided string</param>
+_ASYNCRTIMP std::wstring __cdecl to_wstring(const std::string& value);
+
+/// <summary>
+/// Converts
+/// </summary>
+/// <param name="value">A two byte character UTF16 string</param>
+/// <returns>A wide representation of provided string</param>
+_ASYNCRTIMP std::wstring __cdecl to_wstring(const std::u16string& value);
+#endif
 /// <summary>
 /// Encode the given byte array into a base64 string
 /// </summary>
@@ -245,6 +275,40 @@ utility::string_t print_string(const Source& val)
     utility::ostringstream_t oss;
     oss.imbue(std::locale::classic());
     oss << val;
+    if (oss.bad())
+    {
+        throw std::bad_cast();
+    }
+    return oss.str();
+}
+
+template<>
+utility::string_t print_string(const utility::string_t& val)
+{
+    utility::ostringstream_t oss;
+    oss.imbue(std::locale::classic());
+    #ifdef _UTF16_STRINGS
+    oss << utility::conversions::to_utf8string(val);
+    #else
+    oss << val;
+    #endif
+    if (oss.bad())
+    {
+        throw std::bad_cast();
+    }
+    return oss.str();
+}
+
+template<>
+utility::string_t print_string(const std::u16string& val)
+{
+    utility::ostringstream_t oss;
+    oss.imbue(std::locale::classic());
+#ifdef _UTF16_STRINGS
+    oss << utility::conversions::to_wstring(val);
+#else
+    oss << utility::conversions::to_utf8string(val);
+#endif
     if (oss.bad())
     {
         throw std::bad_cast();
