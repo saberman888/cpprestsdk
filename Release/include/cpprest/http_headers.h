@@ -318,7 +318,7 @@ private:
     // Headers are stored in a map with case insensitive key.
     inner_container m_headers;
 };
-
+#ifdef _WIN32
 template<>
 void http_headers::add(const key_type& name, const std::wstring& value)
 {
@@ -337,5 +337,6 @@ void http_headers::add(const key_type& name, const std::wstring& value)
         mapVal.append(_XPLATSTR(", ")).append(std::move(printedValue));
     }
 }
+#endif
 } // namespace http
 } // namespace web
